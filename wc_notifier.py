@@ -48,6 +48,20 @@ def get_matches():
         print(f"ERROR fetching matches: {e}")
         return []
 
+def is_live(match):
+    """A match is live if not finished and time_elapsed is not empty/null/finished"""
+    finished = str(match.get("finished", "")).upper()
+    if finished == "TRUE":
+        return False
+    elapsed = str(match.get("time_elapsed", "")).lower().strip()
+    if not elapsed or elapsed in ("null", "none", "", "finished"):
+        return False
+    return True
+
+def is_finished(match):
+    finished = str(match.get("finished", "")).upper()
+    return finished == "TRUE"
+
 def check_matches():
     previous = load_state()
     current = {}
@@ -60,86 +74,67 @@ def check_matches():
 
     now = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
-    # DEBUG: print first 3 matches raw to see field names and status values
-    print("=== DEBUG: First 3 matches raw data ===")
-    for m in matches[:3]:
-        print(json.dumps(m, indent=2, ensure_ascii=False))
-    print("=== END DEBUG ===")
-
     for match in matches:
         mid = str(match.get("id", match.get("_id", "")))
         if not mid:
             continue
 
-        raw_status = str(match.get("status", ""))
-        status = raw_status.upper()
-        home = match.get("home_team", match.get("homeTeam", match.get("team1", "?")))
-        away = match.get("away_team", match.get("awayTeam", match.get("team2", "?")))
-
-        score = match.get("score", {})
-        if isinstance(score, dict):
-            ft = score.get("ft", [])
-            if isinstance(ft, list) and len(ft) == 2:
-                home_score = ft[0]
-                away_score = ft[1]
-            else:
-                home_score = score.get("home", 0)
-                away_score = score.get("away", 0)
-        else:
-            home_score = match.get("home_score", match.get("goalsHome", 0)) or 0
-            away_score = match.get("away_score", match.get("goalsAway", 0)) or 0
-
-        home_score = int(home_score or 0)
-        away_score = int(away_score or 0)
+        home = match.get("home_team_name_en", "?")
+        away = match.get("away_team_name_en", "?")
+        home_score = int(match.get("home_score") or 0)
+        away_score = int(match.get("away_score") or 0)
         score_str = f"{home_score} - {away_score}"
         name = f"{home} vs {away}"
+        elapsed = str(match.get("time_elapsed", "")).strip()
+        live = is_live(match)
+        finished = is_finished(match)
 
         current[mid] = {
-            "status": status,
-            "raw_status": raw_status,
+            "live": live,
+            "finished": finished,
             "home_score": home_score,
             "away_score": away_score,
-            "home": home,
-            "away": away,
+            "elapsed": elapsed,
         }
 
         prev = previous.get(mid, {})
-        prev_status = prev.get("status", "")
+        prev_live = prev.get("live", False)
+        prev_finished = prev.get("finished", False)
         prev_home = int(prev.get("home_score", 0) or 0)
         prev_away = int(prev.get("away_score", 0) or 0)
 
-        # Print status for every match that has changed
-        if raw_status != prev.get("raw_status", ""):
-            print(f"STATUS CHANGE: {name} | {prev.get('raw_status','?')} → {raw_status}")
-
-        # LIVE detection — handle multiple possible status values
-        is_live = status in ("LIVE", "1H", "2H", "HT", "ET", "IN_PROGRESS", "INPROGRESS")
-        was_live = prev_status in ("LIVE", "1H", "2H", "HT", "ET", "IN_PROGRESS", "INPROGRESS")
-
-        if is_live and not was_live:
+        # Kickoff
+        if live and not prev_live:
+            print(f"KICKOFF detected: {name} | elapsed={elapsed}")
             send_notification(
                 title=f"KICKOFF: {name}",
                 message=f"Ο αγώνας ξεκίνησε! {name} | {now}",
                 priority="high",
                 tags="soccer,tada"
             )
-        elif is_live and home_score > prev_home:
+
+        # Goal — home
+        elif live and home_score > prev_home:
             for _ in range(home_score - prev_home):
                 send_notification(
                     title=f"ΓΚΟΛ! {home} σκοράρει!",
-                    message=f"{name}\nΣκορ: {score_str} | {now}",
+                    message=f"{name}\nΣκορ: {score_str} | {elapsed}' | {now}",
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
-        elif is_live and away_score > prev_away:
+
+        # Goal — away
+        elif live and away_score > prev_away:
             for _ in range(away_score - prev_away):
                 send_notification(
                     title=f"ΓΚΟΛ! {away} σκοράρει!",
-                    message=f"{name}\nΣκορ: {score_str} | {now}",
+                    message=f"{name}\nΣκορ: {score_str} | {elapsed}' | {now}",
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
-        elif not is_live and was_live:
+
+        # Full time
+        elif finished and prev_live and not prev_finished:
             send_notification(
                 title=f"ΤΕΛΙΚΟ: {name}",
                 message=f"Τελικό Σκορ: {score_str}",
