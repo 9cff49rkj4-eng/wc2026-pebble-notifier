@@ -38,11 +38,6 @@ jobs:
           git config user.email "wc-bot@users.noreply.github.com"
           git add match_state.json
           git diff --staged --quiet || git commit -m "Update match state $(date -u +%H:%M:%S)"
+          git pull --rebase
           git push
-          sleep 420      - name: Save state
-        run: |
-          git config user.name "wc-bot"
-          git config user.email "wc-bot@users.noreply.github.com"
-          git add match_state.json
-          git commit -m "Update match state $(date -u +%H:%M:%S)" --allow-empty
-          git push
+          sleep 420
