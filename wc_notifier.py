@@ -81,8 +81,10 @@ def check_matches():
 
         home = match.get("home_team_name_en", "?")
         away = match.get("away_team_name_en", "?")
-        home_score = int(match.get("home_score") or 0)
-        away_score = int(match.get("away_score") or 0)
+        raw_home = match.get("home_score", "0")
+        raw_away = match.get("away_score", "0")
+        home_score = int(raw_home) if str(raw_home).lstrip('-').isdigit() else 0
+        away_score = int(raw_away) if str(raw_away).lstrip('-').isdigit() else 0
         score_str = f"{home_score} - {away_score}"
         name = f"{home} vs {away}"
         elapsed = str(match.get("time_elapsed", "")).strip()
