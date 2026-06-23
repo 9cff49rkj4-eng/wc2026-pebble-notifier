@@ -1,0 +1,40 @@
+name: WC2026 Live Notifier
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run notifier script
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python wc_notifier.py
+
+      - name: Save state
+        run: |
+          git config user.name "wc-bot"
+          git config user.email "wc-bot@users.noreply.github.com"
+          git add match_state.json
+          git diff --staged --quiet || git commit -m "Update match state"
+          git push
