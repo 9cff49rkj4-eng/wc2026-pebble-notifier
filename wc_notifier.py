@@ -60,19 +60,31 @@ def check_matches():
 
     now = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
+    # DEBUG: print first 3 matches raw to see field names and status values
+    print("=== DEBUG: First 3 matches raw data ===")
+    for m in matches[:3]:
+        print(json.dumps(m, indent=2, ensure_ascii=False))
+    print("=== END DEBUG ===")
+
     for match in matches:
         mid = str(match.get("id", match.get("_id", "")))
         if not mid:
             continue
 
-        status = str(match.get("status", "")).upper()
+        raw_status = str(match.get("status", ""))
+        status = raw_status.upper()
         home = match.get("home_team", match.get("homeTeam", match.get("team1", "?")))
         away = match.get("away_team", match.get("awayTeam", match.get("team2", "?")))
 
         score = match.get("score", {})
         if isinstance(score, dict):
-            home_score = score.get("home", score.get("ft", [0, 0])[0] if isinstance(score.get("ft"), list) else 0)
-            away_score = score.get("away", score.get("ft", [0, 0])[1] if isinstance(score.get("ft"), list) else 0)
+            ft = score.get("ft", [])
+            if isinstance(ft, list) and len(ft) == 2:
+                home_score = ft[0]
+                away_score = ft[1]
+            else:
+                home_score = score.get("home", 0)
+                away_score = score.get("away", 0)
         else:
             home_score = match.get("home_score", match.get("goalsHome", 0)) or 0
             away_score = match.get("away_score", match.get("goalsAway", 0)) or 0
@@ -84,6 +96,7 @@ def check_matches():
 
         current[mid] = {
             "status": status,
+            "raw_status": raw_status,
             "home_score": home_score,
             "away_score": away_score,
             "home": home,
@@ -95,17 +108,22 @@ def check_matches():
         prev_home = int(prev.get("home_score", 0) or 0)
         prev_away = int(prev.get("away_score", 0) or 0)
 
-        # Kickoff
-        if status == "LIVE" and prev_status != "LIVE":
+        # Print status for every match that has changed
+        if raw_status != prev.get("raw_status", ""):
+            print(f"STATUS CHANGE: {name} | {prev.get('raw_status','?')} → {raw_status}")
+
+        # LIVE detection — handle multiple possible status values
+        is_live = status in ("LIVE", "1H", "2H", "HT", "ET", "IN_PROGRESS", "INPROGRESS")
+        was_live = prev_status in ("LIVE", "1H", "2H", "HT", "ET", "IN_PROGRESS", "INPROGRESS")
+
+        if is_live and not was_live:
             send_notification(
                 title=f"KICKOFF: {name}",
                 message=f"Ο αγώνας ξεκίνησε! {name} | {now}",
                 priority="high",
                 tags="soccer,tada"
             )
-
-        # Goal — home
-        elif status == "LIVE" and home_score > prev_home:
+        elif is_live and home_score > prev_home:
             for _ in range(home_score - prev_home):
                 send_notification(
                     title=f"ΓΚΟΛ! {home} σκοράρει!",
@@ -113,9 +131,7 @@ def check_matches():
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
-
-        # Goal — away
-        elif status == "LIVE" and away_score > prev_away:
+        elif is_live and away_score > prev_away:
             for _ in range(away_score - prev_away):
                 send_notification(
                     title=f"ΓΚΟΛ! {away} σκοράρει!",
@@ -123,12 +139,10 @@ def check_matches():
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
-
-        # Full time
-        elif status in ("FT", "AET", "PEN", "FINISHED") and prev_status == "LIVE":
+        elif not is_live and was_live:
             send_notification(
                 title=f"ΤΕΛΙΚΟ: {name}",
-                message=f"Τελικό Σκορ: {score_str} | {status}",
+                message=f"Τελικό Σκορ: {score_str}",
                 priority="high",
                 tags="soccer,checkered_flag"
             )
