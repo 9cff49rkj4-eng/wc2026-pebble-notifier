@@ -329,11 +329,11 @@
     "elapsed": "notstarted"
   },
   "48": {
-    "live": false,
+    "live": true,
     "finished": false,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "notstarted"
+    "elapsed": "live"
   },
   "49": {
     "live": false,
