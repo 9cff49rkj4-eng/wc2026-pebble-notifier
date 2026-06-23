@@ -49,13 +49,13 @@ def get_matches():
         return []
 
 def is_live(match):
-    """A match is live if not finished and time_elapsed is not empty/null/finished"""
     finished = str(match.get("finished", "")).upper()
     if finished == "TRUE":
         return False
     elapsed = str(match.get("time_elapsed", "")).lower().strip()
-    if not elapsed or elapsed in ("null", "none", "", "finished"):
+    if not elapsed or elapsed in ("null", "none", "", "finished", "notstarted"):
         return False
+    # Must look like a minute number e.g. "23", "45+2", "HT", "90+4"
     return True
 
 def is_finished(match):
