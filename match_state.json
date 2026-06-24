@@ -217,11 +217,11 @@
     "elapsed": "finished"
   },
   "50": {
-    "live": false,
+    "live": true,
     "finished": false,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "notstarted"
+    "elapsed": "live"
   },
   "51": {
     "live": false,
@@ -309,10 +309,10 @@
   },
   "53": {
     "live": false,
-    "finished": false,
-    "home_score": 0,
-    "away_score": 0,
-    "elapsed": "notstarted"
+    "finished": true,
+    "home_score": 3,
+    "away_score": 1,
+    "elapsed": "finished"
   },
   "58": {
     "live": false,
@@ -659,10 +659,10 @@
   },
   "54": {
     "live": false,
-    "finished": false,
-    "home_score": 0,
-    "away_score": 0,
-    "elapsed": "notstarted"
+    "finished": true,
+    "home_score": 2,
+    "away_score": 1,
+    "elapsed": "finished"
   },
   "57": {
     "live": false,
