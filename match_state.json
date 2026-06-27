@@ -330,24 +330,24 @@
   },
   "63": {
     "live": false,
-    "finished": false,
-    "home_score": 0,
-    "away_score": 0,
-    "elapsed": "notstarted"
+    "finished": true,
+    "home_score": 1,
+    "away_score": 1,
+    "elapsed": "finished"
   },
   "65": {
     "live": false,
-    "finished": false,
+    "finished": true,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "notstarted"
+    "elapsed": "finished"
   },
   "66": {
     "live": false,
-    "finished": false,
+    "finished": true,
     "home_score": 0,
-    "away_score": 0,
-    "elapsed": "notstarted"
+    "away_score": 1,
+    "elapsed": "finished"
   },
   "70": {
     "live": false,
@@ -673,10 +673,10 @@
   },
   "64": {
     "live": false,
-    "finished": false,
-    "home_score": 0,
-    "away_score": 0,
-    "elapsed": "notstarted"
+    "finished": true,
+    "home_score": 1,
+    "away_score": 5,
+    "elapsed": "finished"
   },
   "75": {
     "live": false,
