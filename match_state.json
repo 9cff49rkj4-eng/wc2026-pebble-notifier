@@ -140,11 +140,11 @@
     "elapsed": "finished"
   },
   "67": {
-    "live": false,
+    "live": true,
     "finished": false,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "notstarted"
+    "elapsed": "live"
   },
   "72": {
     "live": false,
@@ -609,11 +609,11 @@
     "elapsed": "finished"
   },
   "68": {
-    "live": false,
+    "live": true,
     "finished": false,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "notstarted"
+    "elapsed": "live"
   },
   "69": {
     "live": false,
