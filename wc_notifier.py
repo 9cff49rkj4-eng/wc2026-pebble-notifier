@@ -1,6 +1,7 @@
 import os
 import requests
 import json
+import time
 from datetime import datetime, timezone
 
 NTFY_TOPIC = os.environ.get("NTFY_TOPIC")
@@ -55,22 +56,32 @@ def is_live(match):
     elapsed = str(match.get("time_elapsed", "")).lower().strip()
     if not elapsed or elapsed in ("null", "none", "", "finished", "notstarted"):
         return False
-    # Must look like a minute number e.g. "23", "45+2", "HT", "90+4"
     return True
 
 def is_finished(match):
-    finished = str(match.get("finished", "")).upper()
-    return finished == "TRUE"
+    return str(match.get("finished", "")).upper() == "TRUE"
 
-def check_matches():
-    previous = load_state()
-    current = {}
+def seconds_until_next_hour_plus_5():
+    """Returns seconds to sleep until 5 minutes past the next hour."""
+    now = datetime.now(timezone.utc)
+    # Next hour:05
+    next_hour = now.replace(minute=5, second=0, microsecond=0)
+    if now.minute >= 5:
+        # Already past XX:05, go to next hour
+        if now.hour == 23:
+            next_hour = now.replace(hour=0, minute=5, second=0, microsecond=0)
+            next_hour = next_hour.replace(day=now.day + 1)
+        else:
+            next_hour = now.replace(hour=now.hour + 1, minute=5, second=0, microsecond=0)
+    seconds = (next_hour - now).total_seconds()
+    return max(int(seconds), 60)
+
+def check_and_notify(previous):
+    """Check matches, send notifications, return updated state and whether any match is live."""
     matches = get_matches()
-
-    if not matches:
-        print("No match data returned.")
-        save_state(current)
-        return
+    current = {}
+    any_live = False
+    state_changed = False
 
     now = datetime.now(timezone.utc).strftime("%H:%M UTC")
 
@@ -81,15 +92,20 @@ def check_matches():
 
         home = match.get("home_team_name_en", "?")
         away = match.get("away_team_name_en", "?")
+
         raw_home = match.get("home_score", "0")
         raw_away = match.get("away_score", "0")
         home_score = int(raw_home) if str(raw_home).lstrip('-').isdigit() else 0
         away_score = int(raw_away) if str(raw_away).lstrip('-').isdigit() else 0
+
         score_str = f"{home_score} - {away_score}"
         name = f"{home} vs {away}"
         elapsed = str(match.get("time_elapsed", "")).strip()
         live = is_live(match)
         finished = is_finished(match)
+
+        if live:
+            any_live = True
 
         current[mid] = {
             "live": live,
@@ -107,13 +123,13 @@ def check_matches():
 
         # Kickoff
         if live and not prev_live:
-            print(f"KICKOFF detected: {name} | elapsed={elapsed}")
             send_notification(
                 title=f"KICKOFF: {name}",
                 message=f"Ο αγώνας ξεκίνησε! {name} | {now}",
                 priority="high",
                 tags="soccer,tada"
             )
+            state_changed = True
 
         # Goal — home
         elif live and home_score > prev_home:
@@ -124,6 +140,7 @@ def check_matches():
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
+            state_changed = True
 
         # Goal — away
         elif live and away_score > prev_away:
@@ -134,6 +151,7 @@ def check_matches():
                     priority="urgent",
                     tags="soccer,goal_net"
                 )
+            state_changed = True
 
         # Full time
         elif finished and prev_live and not prev_finished:
@@ -143,10 +161,40 @@ def check_matches():
                 priority="high",
                 tags="soccer,checkered_flag"
             )
+            state_changed = True
 
+    return current, any_live, state_changed
+
+def main():
+    print(f"WC2026 Notifier — {datetime.now(timezone.utc).isoformat()}")
+    previous = load_state()
+
+    # First check
+    current, any_live, state_changed = check_and_notify(previous)
     save_state(current)
-    print(f"Done. Tracked {len(current)} matches.")
+    previous = current
+
+    if any_live:
+        # ACTIVE MODE: poll every 60 seconds while matches are live
+        print("ACTIVE MODE: matches live, polling every 60 seconds")
+        while True:
+            time.sleep(60)
+            current, any_live, state_changed = check_and_notify(previous)
+            save_state(current)
+            previous = current
+            if not any_live:
+                print("No more live matches — exiting active mode")
+                break
+    else:
+        # SLEEP MODE: wait until 5 minutes past next hour
+        sleep_secs = seconds_until_next_hour_plus_5()
+        print(f"SLEEP MODE: no live matches, sleeping {sleep_secs}s until next check")
+        time.sleep(sleep_secs)
+        # One final check after waking up
+        current, any_live, state_changed = check_and_notify(previous)
+        save_state(current)
+
+    print(f"Done — {datetime.now(timezone.utc).isoformat()}")
 
 if __name__ == "__main__":
-    print(f"WC2026 Notifier — {datetime.now(timezone.utc).isoformat()}")
-    check_matches()
+    main()
