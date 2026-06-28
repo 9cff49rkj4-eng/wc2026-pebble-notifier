@@ -147,11 +147,11 @@
     "elapsed": "finished"
   },
   "72": {
-    "live": true,
-    "finished": false,
-    "home_score": 0,
+    "live": false,
+    "finished": true,
+    "home_score": 3,
     "away_score": 1,
-    "elapsed": "live"
+    "elapsed": "finished"
   },
   "86": {
     "live": false,
@@ -455,11 +455,11 @@
     "elapsed": "finished"
   },
   "71": {
-    "live": true,
-    "finished": false,
+    "live": false,
+    "finished": true,
     "home_score": 0,
     "away_score": 0,
-    "elapsed": "live"
+    "elapsed": "finished"
   },
   "73": {
     "live": false,
